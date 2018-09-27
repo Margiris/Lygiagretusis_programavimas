@@ -10,14 +10,11 @@
 #include <fstream>
 #include <string>
 #include <iomanip>
-#include <vector>
 #include <omp.h>
-#include <iostream>
-#include <mutex>
 
 using namespace std;
 
-const int n = 2;
+const int n = 30;
 
 const string data_filename = R"(IFF-6-10_BurakauskasM_L1b_dat.txt)";
 const string results_filename = R"(IFF-6-10_BurakauskasM_L1b_rez.txt)";
@@ -98,28 +95,15 @@ int main()
     write_data(S, I, D);
 
     auto i = 0;
-    mutex mtx;
 
-    #pragma omp parallel num_threads(n)
+#pragma omp parallel num_threads(n)
     {
-        auto thread_number = omp_get_thread_num();
-        results res;
-        res.id = thread_number;
-        res.s = S[thread_number];
-        res.i = I[thread_number];
-        res.d = D[thread_number];
+        const auto thread_number = omp_get_thread_num();
 
-        // for (auto j = 0; j < (thread_number + 1) * 10000; j++)
-        //     int x = sqrt(j);
-
-        P[thread_number] = res;
-
-        cout << thread_number << endl;
-        // P[i++] = results{thread_number, S[thread_number], I[thread_number], D[thread_number]};
+        P[i++] = results{thread_number + 1, S[thread_number], I[thread_number], D[thread_number]};
     }
 
     write_results(P);
 
-    system("pause");
     return 0;
 }
