@@ -1,9 +1,9 @@
 // ReSharper disable CommentTypo
 /*
-1. Tokia, kokia uzrasyti
+1. Atsitiktine (visos beveik vienu metu)
 2. Atsitiktine
-3. Atsitiktini skaiciu
-4. Tokia, kokia surasyti duomenu masyve
+3. Vienos dali
+4. Atsitiktine
 */
 // ReSharper restore CommentTypo
 
@@ -14,19 +14,23 @@
 
 using namespace std;
 
+// Number of lines read from data file and threads created
 const int n = 30;
 
+// Names of data and results files
 const string data_filename = R"(IFF-6-10_BurakauskasM_L1b_dat.txt)";
 const string results_filename = R"(IFF-6-10_BurakauskasM_L1b_rez.txt)";
 
+// Structure for saving results
 struct results
 {
     int id{};
-    string s;
-    int i{};
-    double d{};
+    string a_string;
+    int an_integer{};
+    double a_double{};
 };
 
+// Reads data from file to S, I and D arrays
 // ReSharper disable CppInconsistentNaming
 void read_data(string S[], int I[], double D[])
 // ReSharper restore CppInconsistentNaming
@@ -41,6 +45,8 @@ void read_data(string S[], int I[], double D[])
     data_file.close();
 }
 
+
+// Writes data from S, I and D arrays to results file
 // ReSharper disable CppInconsistentNaming
 void write_data(string S[], int I[], double D[])
 // ReSharper restore CppInconsistentNaming
@@ -61,6 +67,7 @@ void write_data(string S[], int I[], double D[])
     results_file.close();
 }
 
+// Writes data from results array P to results file
 // ReSharper disable CppInconsistentNaming
 void write_results(results P[])
 // ReSharper restore CppInconsistentNaming
@@ -74,7 +81,7 @@ void write_results(results P[])
     for (auto i = 0; i < n; i++)
     {
         results_file << setw(4) << right << to_string(i + 1) + ") " << setw(6) << P[i].id << " " << setw(20) << left <<
-            P[i].s << setw(8) << P[i].i << setw(8) << P[i].d << endl;
+            P[i].a_string << setw(8) << P[i].an_integer << setw(8) << P[i].a_double << endl;
     }
 
     results_file << string(45, '-') << endl;
@@ -96,7 +103,8 @@ int main()
 
     auto i = 0;
 
-#pragma omp parallel num_threads(n)
+    // Creates n threads which all write their data to the same array 
+    #pragma omp parallel num_threads(n)
     {
         const auto thread_number = omp_get_thread_num();
 
