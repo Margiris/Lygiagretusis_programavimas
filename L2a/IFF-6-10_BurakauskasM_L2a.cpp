@@ -1,98 +1,130 @@
-#include <iostream>
-#include <fstream>
 #include <string>
-#include <thread>
-#include <iomanip>
 #include <vector>
-#include <map>
 #include <mutex>
+#include <fstream>
 #include <sstream>
-#include <iterator>
+#include <iostream>
+#include <iomanip>
 
 using namespace std;
 
-const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat.txt)";
+const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat.csv)";
 const string results_filename = R"(IFF-6-10_BurakauskasM_L2a_rez.txt)";
 const string delimiter = ";";
 
-struct teacher
+int producer_thread_count;
+int consumer_thread_count;
+const int total_size = 100;
+
+struct car
 {
-    string name;
-    int working_year{};
-    double average_salary_per_hour{};
+    string manufacturer;
+    string model;
+    int year{};
+    double price{};
 };
 
-class sorting_structure
+struct item
 {
-    public:
-    sorting_structure(int sorting_field, int count)
-        : sortingField(sorting_field),
-          count(count)
-    {
-    }
-
-    private:
-    int sortingField;
+    int year;
     int count;
 };
 
+vector<car> car_data;
+vector<item> orders;
+int data_count;
 
-vector<teacher> read_data()
+class monitor
 {
-    vector<teacher> data;
+    item available_cars_[total_size]{};
+    int available_cars_count_;
+    bool producers_exist_[total_size]{};
 
-    string line;
-
-    ifstream data_file(data_filename);
-
-    while (getline(data_file, line))
+    public:
+    monitor()
     {
-        vector<string> values;
-        size_t pos;
+        available_cars_count_ = 0;
 
-        while ((pos = line.find(delimiter)) != string::npos)
+        for (auto& producer_exists : producers_exist_)
         {
-            values.push_back(line.substr(0, pos));
-            line.erase(0, pos + 1);
-        }
-
-        if (!line.empty())
-        {
-            values.push_back(line);
-        }
-
-        stringstream line_stream;
-        copy(values.begin(), values.end(), ostream_iterator<string>(line_stream, " "));
-
-        switch (values.size())
-        {
-            case 2:
-
-                break;
-            case 4:
-            {
-                string faculty, name;
-                int year;
-                double average_salary_per_hour;
-
-                line_stream >> faculty >> name >> year >> average_salary_per_hour;
-
-                data.push_back(teacher{name, year, average_salary_per_hour});
-                break;
-            }
-            default:
-                cout << "Wrong data, skipping line." << endl;
-                break;
+            producer_exists = false;
         }
     }
 
-    data_file.close();
+    bool is_producing()
+    {
+        for (auto& producer_exists : producers_exist_)
+        {
+            if (producer_exists)
+            {
+                return true;
+            }
+        }
 
-    return data;
+        return false;
+    }
+};
+
+struct producer
+{
+};
+
+struct consumer
+{
+};
+
+void print_car(const car a_car)
+{
+    cout << left << setw(15) << a_car.manufacturer << setw(20) << a_car.model
+        << right << setw(5) << a_car.year << setw(10) << fixed << setprecision(2) << a_car.price << "\n";
+}
+
+void read_data()
+{
+    ifstream file(data_filename);
+
+    string current_line;
+
+    while (getline(file, current_line))
+    {
+        vector<string> current_values;
+        stringstream ss(current_line);
+        string item_string;
+
+        while (getline(ss, item_string, ','))
+        {
+            current_values.push_back(item_string);
+        }
+
+        if (current_values.size() == 4)
+        {
+            const auto manufacturer = current_values[0];
+            const auto model = current_values[1];
+            const int year = stol(current_values[2]);
+            const double price = stold(current_values[3]);
+
+            car_data.push_back(car{manufacturer, model, year, price});
+        }
+        else if (current_values.size() == 2)
+        {
+            const int year = stol(current_values[0]);
+            const int count = stol(current_values[1]);
+
+            orders.push_back(item{year, count});
+        }
+    }
+
+    data_count = car_data.size();
 }
 
 int main()
 {
     read_data();
+
+    for (const auto& i : car_data)
+    {
+        print_car(i);
+    }
+
     system("pause");
 }
