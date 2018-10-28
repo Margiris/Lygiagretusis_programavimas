@@ -117,6 +117,9 @@
   <ItemGroup>
     <ClCompile Include="IFF-6-10_BurakauskasM_L2a.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="IFF-6-10_BurakauskasM_L2a_dat.csv" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
