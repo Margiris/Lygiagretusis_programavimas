@@ -8,16 +8,14 @@
 
 using namespace std;
 
-const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat.csv)";
+const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat_1.csv)";
+// const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat_2.csv)";
+// const string data_filename = R"(IFF-6-10_BurakauskasM_L2a_dat_3.csv)";
 const string results_filename = R"(IFF-6-10_BurakauskasM_L2a_rez.txt)";
 
 const char delimiter = ',';
 const int total_size = 100;
-
-int data_count;
-
-// int producer_thread_count;
-// int consumer_thread_count;
+const int allowed_tries_after_produce = 1;
 
 struct car
 {
@@ -33,12 +31,83 @@ struct order
     int count;
 };
 
-
 class monitor
 {
     order available_cars_[total_size]{};
     int available_cars_count_;
     bool producers_exist_[total_size]{};
+
+    mutex mtx_lock_;
+    condition_variable cv_;
+
+    int calculate_index_for(const int year) const
+    {
+        if (available_cars_count_ == 0)
+        {
+            return 0;
+        }
+
+        for (auto i = 0; i < available_cars_count_; i++)
+        {
+            if (year <= available_cars_[i].year)
+            {
+                return i;
+            }
+        }
+
+        return available_cars_count_;
+    }
+
+    void list_car(const int year)
+    {
+        const auto index = calculate_index_for(year);
+
+        if (year == available_cars_[index].year)
+        {
+            available_cars_[index].count++;
+        }
+        else
+        {
+            if (index != available_cars_count_)
+            {
+                for (auto i = available_cars_count_; i > index; i--)
+                {
+                    available_cars_[i] = available_cars_[i - 1];
+                }
+            }
+
+            available_cars_[index].count = 1;
+            available_cars_[index].year = year;
+            available_cars_count_++;
+        }
+    }
+
+    bool unlist_car(const int year)
+    {
+        for (auto i = 0; i < available_cars_count_; i++)
+        {
+            if (year == available_cars_[i].year)
+            {
+                if (available_cars_[i].count > 1)
+                {
+                    available_cars_[i].count--;
+                }
+                else
+                {
+                    for (auto o = i; o < available_cars_count_; o++)
+                    {
+                        available_cars_[o] = available_cars_[o + 1];
+                    }
+
+                    available_cars_count_--;
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public:
     monitor()
@@ -68,21 +137,79 @@ class monitor
     {
         producers_exist_[index] = true;
     }
+
+    void suppress_producer(const int index)
+    {
+        producers_exist_[index] = false;
+    }
+
+    void add_available_car(const car new_car)
+    {
+        unique_lock<mutex> guard(mtx_lock_);
+
+        cv_.wait(guard, [=] { return available_cars_count_ < total_size; });
+
+        list_car(new_car.year);
+
+        cv_.notify_all();
+    }
+
+    bool remove_available_car(const order order1)
+    {
+        unique_lock<mutex> guard(mtx_lock_);
+
+        if (is_producing())
+        {
+            cv_.wait(guard, [=] { return available_cars_count_ > 0; });
+        }
+
+        const auto was_removed = unlist_car(order1.year);
+
+        cv_.notify_all();
+
+        return was_removed;
+    }
+
+    void print_available_cars() const
+    {
+        stringstream buffer;
+
+        buffer << "Laisvi automobiliai:\n";
+
+        if (available_cars_count_ > 0)
+        {
+            buffer << left << setw(4) << "Nr." << right << setw(6) << "Metai" << setw(7) << "Kiekis" << "\n";
+            buffer << string(17, '-') << "\n";
+
+            auto line_index = 0;
+
+            while (available_cars_[line_index++].year > 0)
+            {
+                buffer << left << setw(4) << line_index << right << setw(6) << available_cars_[line_index - 1].year <<
+                    setw(7) << available_cars_[line_index - 1].count << "\n";
+            }
+
+            buffer << string(17, '-') << "\n";
+        }
+        else { buffer << "-\n"; }
+
+        ofstream results_file(results_filename, ios::app);
+        results_file << buffer.str();
+        cout << buffer.str();
+    }
 };
+
+monitor global_monitor;
 
 class producer
 {
-    vector<car> cars_data_;
-
     public:
+
+    vector<car> cars_data;
+
     explicit producer(const vector<car>& list_of_cars)
     {
-        cars_data_ = list_of_cars;
-    }
-
-    void add_car(const car& new_car)
-    {
-        cars_data_.push_back(new_car);
+        cars_data = list_of_cars;
     }
 
     void print_cars_data()
@@ -95,7 +222,7 @@ class producer
 
         auto line_index = 0;
 
-        for (const auto& a_car : cars_data_)
+        for (const auto& a_car : cars_data)
         {
             buffer << left << setw(4) << ++line_index << setw(15) << a_car.manufacturer << setw(20) << a_car.model <<
                 right << setw(5) << a_car.year << setw(10) << fixed << setprecision(2) << a_car.price << "\n";
@@ -107,25 +234,17 @@ class producer
         results_file << buffer.str();
         cout << buffer.str();
     }
-
-    // void produce()
-    // {
-    // }
 };
 
 class consumer
 {
-    vector<order> orders_data_;
-
     public:
+
+    vector<order> orders_data;
+
     explicit consumer(const vector<order>& orders)
     {
-        orders_data_ = orders;
-    }
-
-    void add_order(const order& new_order)
-    {
-        orders_data_.push_back(new_order);
+        orders_data = orders;
     }
 
     void print_orders_data()
@@ -137,7 +256,7 @@ class consumer
 
         auto line_index = 0;
 
-        for (const auto& an_order : orders_data_)
+        for (const auto& an_order : orders_data)
         {
             buffer << left << setw(4) << ++line_index << right << setw(6) << an_order.year << setw(7) << an_order.count
                 << "\n";
@@ -151,7 +270,7 @@ class consumer
     }
 };
 
-void read_producer_data(vector<producer>& producers, vector<consumer>& consumers)
+void read_data(vector<producer>& producers, vector<consumer>& consumers)
 {
     ifstream data_file(data_filename);
 
@@ -201,22 +320,8 @@ void read_producer_data(vector<producer>& producers, vector<consumer>& consumers
     }
 }
 
-void clear_results_file()
+void write_data(vector<producer>& producers, vector<consumer>& consumers)
 {
-    ofstream file;
-    file.open(results_filename, ofstream::out | ofstream::trunc);
-    file.close();
-}
-
-int main()
-{
-    clear_results_file();
-
-    vector<producer> producers;
-    vector<consumer> consumers;
-
-    read_producer_data(producers, consumers);
-
     for (auto& producer : producers)
     {
         producer.print_cars_data();
@@ -226,6 +331,113 @@ int main()
     {
         consumer.print_orders_data();
     }
+}
+
+void produce(producer producer1)
+{
+    for (const auto& a_car : producer1.cars_data)
+    {
+        global_monitor.add_available_car(a_car);
+    }
+}
+
+void consume(consumer consumer1)
+{
+    auto tries_after_produce = 0;
+
+    while ((global_monitor.is_producing() || tries_after_produce < allowed_tries_after_produce)
+           && !consumer1.orders_data.empty())
+    {
+        for (auto i = 0; i < int(consumer1.orders_data.size()); i++)
+        {
+            const auto was_removed = global_monitor.remove_available_car(consumer1.orders_data[i]);
+
+            if (was_removed)
+            {
+                if (consumer1.orders_data[i].count > 1)
+                {
+                    consumer1.orders_data[i].count--;
+                }
+                else
+                {
+                    consumer1.orders_data.erase(consumer1.orders_data.begin() + i);
+                }
+            }
+            else if (!global_monitor.is_producing())
+            {
+                tries_after_produce++;
+            }
+        }
+    }
+}
+
+void clear_results_file()
+{
+    ofstream file;
+    file.open(results_filename, ofstream::out | ofstream::trunc);
+    file.close();
+}
+
+void start_threads(thread producer_threads[], vector<producer>& producers,
+                   thread consumer_threads[], vector<consumer>& consumers)
+{
+    for (auto i = 0; i < int(producers.size()); i++)
+    {
+        global_monitor.announce_producer(i);
+
+        producer_threads[i] = thread(produce, producers[i]);
+    }
+
+    for (auto i = 0; i < int(consumers.size()); i++)
+    {
+        consumer_threads[i] = thread(consume, consumers[i]);
+    }
+}
+
+void wait_for_threads(thread producer_threads[], const vector<producer>& producers,
+                      thread consumer_threads[], const vector<consumer>& consumers)
+{
+    for (auto i = 0; i < int(producers.size()); i++)
+    {
+        producer_threads[i].join();
+
+        global_monitor.suppress_producer(i);
+    }
+
+    for (auto i = 0; i < int(consumers.size()); i++)
+    {
+        consumer_threads[i].join();
+    }
+}
+
+int main()
+{
+    clear_results_file();
+
+    vector<producer> producers;
+    vector<consumer> consumers;
+
+    read_data(producers, consumers);
+
+    if (producers.empty())
+    {
+        cout << "No data, exiting. ";
+        system("pause");
+        return -1;
+    }
+
+    write_data(producers, consumers);
+
+    const auto producer_threads = new thread[producers.size()];
+    const auto consumer_threads = new thread[producers.size()];
+
+    start_threads(producer_threads, producers, consumer_threads, consumers);
+    wait_for_threads(producer_threads, producers, consumer_threads, consumers);
+
+    global_monitor.print_available_cars();
+
+    delete [] producer_threads;
+    delete [] consumer_threads;
 
     system("pause");
 }
