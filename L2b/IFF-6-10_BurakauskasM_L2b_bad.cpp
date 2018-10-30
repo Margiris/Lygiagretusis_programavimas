@@ -5,17 +5,18 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
 
 using namespace std;
 
-const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_1.csv)";
+// const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_1.csv)";
 // const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_2.csv)";
-// const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_3.csv)";
-const string results_filename = R"(IFF-6-10_BurakauskasM_L2a_rez.txt)";
+const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_3.csv)";
+const string results_filename = R"(IFF-6-10_BurakauskasM_L2b_rez.txt)";
 
 const char delimiter = ',';
-const int total_size = 30;
-const int allowed_tries_after_produce = 1;
+const int total_size = 100;
+const int allowed_tries_after_produce = 0;
 
 struct car
 {
@@ -35,11 +36,7 @@ class monitor
 {
     order available_cars_[total_size]{};
     int available_cars_count_;
-    bool producers_exist_[100]{};
-    bool consumers_exit_[100]{};
-
-    mutex mtx_lock_;
-    condition_variable cv_;
+    bool producers_exist_[total_size]{};
 
     int calculate_index_for(const int year) const
     {
@@ -119,10 +116,6 @@ class monitor
         {
             producer_exists = false;
         }
-        for (auto& consumer_exists : consumers_exit_)
-        {
-            consumer_exists = false;
-        }
     }
 
     bool is_producing()
@@ -130,19 +123,6 @@ class monitor
         for (auto& producer_exists : producers_exist_)
         {
             if (producer_exists)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    bool is_consuming()
-    {
-        for (auto& consumer_exists : consumers_exit_)
-        {
-            if (consumer_exists)
             {
                 return true;
             }
@@ -161,51 +141,74 @@ class monitor
         producers_exist_[index] = false;
     }
 
-    void announce_consumer(const int index)
-    {
-        producers_exist_[index] = true;
-    }
-
-    void suppress_consumer(const int index)
-    {
-        producers_exist_[index] = false;
-    }
-
     void add_available_car(const car new_car)
     {
-        unique_lock<mutex> guard(mtx_lock_);
-
-        if (is_consuming())
+        // cv_.wait(guard, [=] { return available_cars_count_ < total_size; });
+        #pragma omp critical (order_array_critical)
         {
-            cv_.wait(guard, [=] { return available_cars_count_ < total_size; });
+            // list_car(new_car.year);
+            const auto index = calculate_index_for(new_car.year);
+
+            if (new_car.year == available_cars_[index].year)
+            {
+                available_cars_[index].count++;
+            }
+            else
+            {
+                if (index != available_cars_count_)
+                {
+                    for (auto i = available_cars_count_; i > index; i--)
+                    {
+                        available_cars_[i] = available_cars_[i - 1];
+                    }
+                }
+
+                available_cars_[index].count = 1;
+                available_cars_[index].year = new_car.year;
+                available_cars_count_++;
+            }
         }
 
-        if (available_cars_count_ < total_size)
-        {
-            list_car(new_car.year);
-
-            cv_.notify_all();
-        }
+        // cv_.notify_all();
     }
 
     bool remove_available_car(const order order1)
     {
-        unique_lock<mutex> guard(mtx_lock_);
-
-        auto was_removed = false;
-
-        if (is_producing())
+        // if (is_producing())
+        // {
+        //     cv_.wait(guard, [=] { return available_cars_count_ > 0; });
+        // }
+        #pragma omp critical (order_array_critical)
         {
-            cv_.wait(guard, [=] { return available_cars_count_ > 0; });
+            // const auto was_removed = unlist_car(order1.year);
+            //
+            // return was_removed;
+            for (auto i = 0; i < available_cars_count_; i++)
+            {
+                if (order1.year == available_cars_[i].year)
+                {
+                    if (available_cars_[i].count > 1)
+                    {
+                        available_cars_[i].count--;
+                    }
+                    else
+                    {
+                        for (auto o = i; o < available_cars_count_; o++)
+                        {
+                            available_cars_[o] = available_cars_[o + 1];
+                        }
+
+                        available_cars_count_--;
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        if (available_cars_count_ > 0)
-        {
-            was_removed = unlist_car(order1.year);
-            cv_.notify_all();
-        }
-
-        return was_removed;
+        // cv_.notify_all();
     }
 
     void print_available_cars() const
@@ -219,14 +222,12 @@ class monitor
             buffer << left << setw(4) << "Nr." << right << setw(6) << "Metai" << setw(7) << "Kiekis" << "\n";
             buffer << string(17, '-') << "\n";
 
-            for (auto i = 0; i < total_size; i++)
+            auto line_index = 0;
+
+            while (available_cars_[line_index++].year > 0)
             {
-                if (available_cars_[i].count > 0)
-                {
-                    buffer << left << setw(4) << i + 1 << right << setw(6) << available_cars_[i].year <<
-                        setw(7) << available_cars_[i].count << "\n";
-                }
-                else break;
+                buffer << left << setw(4) << line_index << right << setw(6) << available_cars_[line_index - 1].year <<
+                    setw(7) << available_cars_[line_index - 1].count << "\n";
             }
 
             buffer << string(17, '-') << "\n";
@@ -247,7 +248,7 @@ class producer
 
     vector<car> cars_data;
 
-    explicit producer(const vector<car>& list_of_cars)
+    explicit producer(vector<car>& list_of_cars)
     {
         cars_data = list_of_cars;
     }
@@ -282,7 +283,7 @@ class consumer
 
     vector<order> orders_data;
 
-    explicit consumer(const vector<order>& orders)
+    explicit consumer(vector<order>& orders)
     {
         orders_data = orders;
     }
@@ -383,6 +384,7 @@ void produce(producer producer1)
 
 void consume(consumer consumer1)
 {
+    cout << "trying to remove\n";
     auto tries_after_produce = 0;
 
     while ((global_monitor.is_producing() || tries_after_produce < allowed_tries_after_produce)
@@ -418,21 +420,25 @@ void clear_results_file()
     file.close();
 }
 
-void start_threads(thread producer_threads[], vector<producer>& producers,
-                   thread consumer_threads[], vector<consumer>& consumers)
+void start_threads(const vector<producer>& producers, const vector<consumer>& consumers)
 {
-    for (auto i = 0; i < int(producers.size()); i++)
+    const int thread_count = producers.size() + consumers.size();
+
+    #pragma omp parallel num_threads(thread_count)
     {
-        global_monitor.announce_producer(i);
+        const auto thread_id = omp_get_thread_num();
 
-        producer_threads[i] = thread(produce, producers[i]);
-    }
-
-    for (auto i = 0; i < int(consumers.size()); i++)
-    {
-        global_monitor.announce_consumer(i);
-
-        consumer_threads[i] = thread(consume, consumers[i]);
+        if (thread_id < int(producers.size()))
+        {
+            cout << "trying to add, id " << thread_id << "\n";
+            global_monitor.announce_producer(thread_id);
+            produce(producers[thread_id]);
+            global_monitor.suppress_producer(thread_id);
+        }
+        else
+        {
+            consume(consumers[thread_id - producers.size()]);
+        }
     }
 }
 
@@ -449,8 +455,6 @@ void wait_for_threads(thread producer_threads[], const vector<producer>& produce
     for (auto i = 0; i < int(consumers.size()); i++)
     {
         consumer_threads[i].join();
-
-        global_monitor.suppress_consumer(i);
     }
 }
 
@@ -472,16 +476,18 @@ int main()
 
     write_data(producers, consumers);
 
-    const auto producer_threads = new thread[producers.size()];
-    const auto consumer_threads = new thread[producers.size()];
+    // const auto producer_threads = new thread[producers.size()];
+    // const auto consumer_threads = new thread[producers.size()];
 
-    start_threads(producer_threads, producers, consumer_threads, consumers);
-    wait_for_threads(producer_threads, producers, consumer_threads, consumers);
+    start_threads(producers, consumers);
+    //wait_for_threads(producer_threads, producers, consumer_threads, consumers);
 
     global_monitor.print_available_cars();
 
-    delete [] producer_threads;
-    delete [] consumer_threads;
+    // delete [] producer_threads;
+    // delete [] consumer_threads;
 
     system("pause");
+
+    return 0;
 }
