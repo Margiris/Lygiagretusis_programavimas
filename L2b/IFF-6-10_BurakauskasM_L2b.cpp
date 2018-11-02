@@ -1,17 +1,17 @@
 #include <string>
 #include <vector>
-#include <mutex>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
 
 using namespace std;
 
 const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_1.csv)";
 // const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_2.csv)";
 // const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_3.csv)";
-const string results_filename = R"(IFF-6-10_BurakauskasM_L2a_rez.txt)";
+const string results_filename = R"(IFF-6-10_BurakauskasM_L2b_rez.txt)";
 
 const char delimiter = ',';
 // Size of the main data structure.
@@ -47,12 +47,12 @@ class monitor
     bool consumers_exit_[100]{};
 
     // Locks used to protect arrays. Names correspond to the objects they are for.
-    mutex mtx_lock_available_cars_;
-    mutex mtx_lock_is_producer_;
-    mutex mtx_lock_is_consumer_;
-    mutex mtx_lock_print_;
+    omp_lock_t omp_lock_available_cars_{};
+    omp_lock_t omp_lock_producers_exist_{};
+    omp_lock_t omp_lock_consumers_exist_{};
 
-    condition_variable cv_;
+    omp_lock_t omp_lock_less_than_min_{};
+    omp_lock_t omp_lock_more_than_max_{};
 
     /**
      * \brief Finds index in available_cars_ array for specified year value in ascending order.
@@ -148,6 +148,14 @@ class monitor
      */
     monitor()
     {
+        // Initialization of locks.
+        omp_init_lock(&omp_lock_available_cars_);
+        omp_init_lock(&omp_lock_producers_exist_);
+        omp_init_lock(&omp_lock_consumers_exist_);
+
+        omp_init_lock(&omp_lock_less_than_min_);
+        omp_init_lock(&omp_lock_more_than_max_);
+
         available_cars_count_ = 0;
 
         for (auto& producer_exists : producers_exist_)
@@ -200,9 +208,9 @@ class monitor
      */
     void announce_producer(const int index)
     {
-        unique_lock<mutex> guard(mtx_lock_is_producer_);
-
+        omp_set_lock(&omp_lock_producers_exist_);
         producers_exist_[index] = true;
+        omp_unset_lock(&omp_lock_producers_exist_);
     }
 
     /**
@@ -211,9 +219,9 @@ class monitor
      */
     void suppress_producer(const int index)
     {
-        unique_lock<mutex> guard(mtx_lock_is_producer_);
-
+        omp_set_lock(&omp_lock_producers_exist_);
         producers_exist_[index] = false;
+        omp_unset_lock(&omp_lock_producers_exist_);
     }
 
     /**
@@ -222,9 +230,9 @@ class monitor
      */
     void announce_consumer(const int index)
     {
-        unique_lock<mutex> guard(mtx_lock_is_consumer_);
-
+        omp_set_lock(&omp_lock_consumers_exist_);
         producers_exist_[index] = true;
+        omp_unset_lock(&omp_lock_consumers_exist_);
     }
 
     /**
@@ -233,9 +241,9 @@ class monitor
      */
     void suppress_consumer(const int index)
     {
-        unique_lock<mutex> guard(mtx_lock_is_consumer_);
-
+        omp_set_lock(&omp_lock_consumers_exist_);
         producers_exist_[index] = false;
+        omp_unset_lock(&omp_lock_consumers_exist_);
     }
 
     /**
@@ -245,19 +253,24 @@ class monitor
      */
     void add_available_car(const car new_car)
     {
-        unique_lock<mutex> guard(mtx_lock_available_cars_);
+        omp_set_lock(&omp_lock_available_cars_);
 
-        if (is_consuming())
+        if (is_consuming() && available_cars_count_ >= total_size)
         {
-            cv_.wait(guard, [=] { return available_cars_count_ < total_size; });
+            omp_set_lock(&omp_lock_more_than_max_);
         }
 
         if (available_cars_count_ < total_size)
         {
             list_car(new_car.year);
 
-            cv_.notify_all();
+            omp_unset_lock(&omp_lock_more_than_max_);
         }
+        else
+        {
+        }
+
+        omp_unset_lock(&omp_lock_available_cars_);
     }
 
     /**
@@ -268,21 +281,23 @@ class monitor
      */
     bool remove_available_car(const order order1)
     {
-        unique_lock<mutex> guard(mtx_lock_available_cars_);
+        omp_set_lock(&omp_lock_available_cars_);
 
         auto was_removed = false;
 
-        if (is_producing())
+        if (is_producing() && available_cars_count_ <= 0)
         {
-            cv_.wait(guard, [=] { return available_cars_count_ > 0; });
+            omp_set_lock(&omp_lock_less_than_min_);
         }
 
         if (available_cars_count_ > 0)
         {
             was_removed = unlist_car(order1.year);
-            cv_.notify_all();
+
+            omp_unset_lock(&omp_lock_less_than_min_);
         }
 
+        omp_unset_lock(&omp_lock_available_cars_);
         return was_removed;
     }
 
@@ -291,8 +306,6 @@ class monitor
      */
     void print_available_cars()
     {
-        unique_lock<mutex> guard(mtx_lock_print_);
-
         stringstream buffer;
 
         buffer << "Laisvi automobiliai:\n";
@@ -538,53 +551,26 @@ void clear_results_file()
 
 /**
  * \brief Announces each producer and consumer object contained in producers and consumers
- * lists and then starts a thread for it.
- * \param producer_threads Array of producers threads.
+ * lists and then calls produce method.
  * \param producers Reference to a list of producer objects.
- * \param consumer_threads Array of consumers threads.
  * \param consumers Reference to a list of consumer objects.
  */
-void start_threads(thread producer_threads[], vector<producer>& producers,
-                   thread consumer_threads[], vector<consumer>& consumers)
+void start_threads(vector<producer>& producers, vector<consumer>& consumers)
 {
-    for (auto i = 0; i < int(producers.size()); i++)
+    #pragma omp parallel num_threads(producers.size() + consumers.size())
     {
-        global_monitor.announce_producer(i);
+        const auto i = omp_get_thread_num();
 
-        producer_threads[i] = thread(produce, producers[i]);
-    }
-
-    for (auto i = 0; i < int(consumers.size()); i++)
-    {
-        global_monitor.announce_consumer(i);
-
-        consumer_threads[i] = thread(consume, consumers[i]);
-    }
-}
-
-/**
- * \brief Calls join function on each object in producers and consumers threads array and
- * then marks that they are no longer producing and consuming.
- * \param producer_threads Array of producers threads.
- * \param producers Reference to a list of producer objects.
- * \param consumer_threads Array of consumers threads.
- * \param consumers Reference to a list of consumer objects.
- */
-void wait_for_threads(thread producer_threads[], const vector<producer>& producers,
-                      thread consumer_threads[], const vector<consumer>& consumers)
-{
-    for (auto i = 0; i < int(producers.size()); i++)
-    {
-        producer_threads[i].join();
-
-        global_monitor.suppress_producer(i);
-    }
-
-    for (auto i = 0; i < int(consumers.size()); i++)
-    {
-        consumer_threads[i].join();
-
-        global_monitor.suppress_consumer(i);
+        if (i < int(producers.size()))
+        {
+            global_monitor.announce_producer(i);
+            produce(producers[i]);
+            global_monitor.suppress_producer(i);
+        }
+        else
+        {
+            consume(consumers[i - int(producers.size())]);
+        }
     }
 }
 
@@ -607,17 +593,9 @@ int main()
 
     write_data(producers, consumers);
 
-    const auto producer_threads = new thread[producers.size()];
-    const auto consumer_threads = new thread[producers.size()];
-
-    start_threads(producer_threads, producers, consumer_threads, consumers);
-    wait_for_threads(producer_threads, producers, consumer_threads, consumers);
+    start_threads(producers, consumers);
 
     global_monitor.print_available_cars();
-
-    // Reclaiming resources.
-    delete [] producer_threads;
-    delete [] consumer_threads;
 
     system("pause");
 }
