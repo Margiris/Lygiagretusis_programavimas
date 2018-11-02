@@ -537,12 +537,12 @@ void clear_results_file()
 }
 
 /**
- * \brief Announces each producer and consumer object contained in producers and consumers
+ * \brief Announces each producer and consumer object contained producers and consumers
  * lists and then starts a thread for it.
- * \param producer_threads Array of producers threads.
- * \param producers Reference to a list of producer objects.
- * \param consumer_threads Array of consumers threads.
- * \param consumers Reference to a list of consumer objects.
+ * \param producer_threads Array of producers threads
+ * \param producers Reference of a list of producer objects
+ * \param consumer_threads Array of consumers threads
+ * \param consumers Reference of a list of consumer objects
  */
 void start_threads(thread producer_threads[], vector<producer>& producers,
                    thread consumer_threads[], vector<consumer>& consumers)
@@ -563,12 +563,12 @@ void start_threads(thread producer_threads[], vector<producer>& producers,
 }
 
 /**
- * \brief Calls join function on each object in producers and consumers threads array and
+ * \brief Calls join function on each object in producers and consumers threads and
  * then marks that they are no longer producing and consuming.
- * \param producer_threads Array of producers threads.
- * \param producers Reference to a list of producer objects.
- * \param consumer_threads Array of consumers threads.
- * \param consumers Reference to a list of consumer objects.
+ * \param producer_threads Array of producers threads
+ * \param producers Reference of a list of producer objects
+ * \param consumer_threads Array of consumers threads
+ * \param consumers Reference of a list of consumer objects
  */
 void wait_for_threads(thread producer_threads[], const vector<producer>& producers,
                       thread consumer_threads[], const vector<consumer>& consumers)

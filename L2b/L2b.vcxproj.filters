@@ -15,11 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="IFF-6-10_BurakauskasM_L2a.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="..\L2data\IFF-6-10_BurakauskasM_L2_dat_2.csv">
+      <Filter>Resource Files</Filter>
+    </None>
     <None Include="..\L2data\IFF-6-10_BurakauskasM_L2_dat_3.csv">
       <Filter>Resource Files</Filter>
     </None>
@@ -29,12 +27,14 @@
     <None Include="..\L2data\IFF-6-10_BurakauskasM_L2_dat_1.csv">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="..\L2data\IFF-6-10_BurakauskasM_L2_dat_2.csv">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="IFF-6-10_BurakauskasM_L2a_rez.txt">
+    <ClCompile Include="IFF-6-10_BurakauskasM_L2b.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="IFF-6-10_BurakauskasM_L2b_rez.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
