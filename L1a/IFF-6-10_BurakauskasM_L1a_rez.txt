@@ -47,26 +47,26 @@ Nr Gija       Eiles nr. Vardas              Metai   Alga / h
  3 gija_nr_2  1         Saulius             1       8.34     
  4 gija_nr_3  1         Monika              3       9.55     
  5 gija_nr_4  1         1Sandra             2       7.65     
- 6 gija_nr_0  2         Mantautas           4       7.45     
- 7 gija_nr_0  3         Virginijus          3       8.24     
- 8 gija_nr_3  2         Mantas              1       6.74     
- 9 gija_nr_1  2         Androvaldas         1       8.99     
-10 gija_nr_0  4         Akvile              3       7.55     
-11 gija_nr_3  3         Ruspiene            2       4.33     
-12 gija_nr_3  4         Rusdaugas           4       8.27     
-13 gija_nr_3  5         Mantguste           3       8.15     
-14 gija_nr_1  3         Kamile              2       6.71     
-15 gija_nr_2  2         Gabriele            2       10       
-16 gija_nr_2  3         Lenkvile            3       6.48     
-17 gija_nr_2  4         Germdaugas          4       9.1      
-18 gija_nr_1  4         Marija              1       7.12     
-19 gija_nr_2  5         Laima               1       9.95     
-20 gija_nr_0  5         Samagontauta        2       5.32     
-21 gija_nr_4  2         1Tomas              2       5.45     
-22 gija_nr_0  6         Aivaras             3       8.65     
-23 gija_nr_4  3         1Jonas              2       6.66     
-24 gija_nr_4  4         Tomas               2       5.45     
-25 gija_nr_4  5         Sandra              2       7.65     
-26 gija_nr_4  6         Butvile             2       7.25     
-27 gija_nr_4  7         Jonas               2       6.66     
-28 gija_nr_4  8         1Butvile            2       7.25     
+ 6 gija_nr_1  2         Androvaldas         1       8.99     
+ 7 gija_nr_1  3         Kamile              2       6.71     
+ 8 gija_nr_4  2         1Tomas              2       5.45     
+ 9 gija_nr_2  2         Gabriele            2       10       
+10 gija_nr_4  3         1Jonas              2       6.66     
+11 gija_nr_3  2         Mantas              1       6.74     
+12 gija_nr_1  4         Marija              1       7.12     
+13 gija_nr_2  3         Lenkvile            3       6.48     
+14 gija_nr_4  4         Tomas               2       5.45     
+15 gija_nr_2  4         Germdaugas          4       9.1      
+16 gija_nr_0  2         Mantautas           4       7.45     
+17 gija_nr_3  3         Ruspiene            2       4.33     
+18 gija_nr_4  5         Sandra              2       7.65     
+19 gija_nr_0  3         Virginijus          3       8.24     
+20 gija_nr_0  4         Akvile              3       7.55     
+21 gija_nr_4  6         Butvile             2       7.25     
+22 gija_nr_3  4         Rusdaugas           4       8.27     
+23 gija_nr_2  5         Laima               1       9.95     
+24 gija_nr_3  5         Mantguste           3       8.15     
+25 gija_nr_4  7         Jonas               2       6.66     
+26 gija_nr_0  5         Samagontauta        2       5.32     
+27 gija_nr_4  8         1Butvile            2       7.25     
+28 gija_nr_0  6         Aivaras             3       8.65     
