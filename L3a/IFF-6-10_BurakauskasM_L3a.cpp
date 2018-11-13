@@ -552,81 +552,60 @@ void clear_results_file()
     file.close();
 }
 
-/**
- * \brief Announces each producer and consumer object contained in producers and consumers
- * lists and then calls produce method.
- * \param producers Reference to a list of producer objects.
- * \param consumers Reference to a list of consumer objects.
- */
-void start_threads(vector<producer>& producers, vector<consumer>& consumers)
-{
-    #pragma omp parallel num_threads(producers.size() + consumers.size())
-    {
-        const auto i = omp_get_thread_num();
-
-        if (i < int(producers.size()))
-        {
-            global_monitor.announce_producer(i);
-            produce(producers[i]);
-            global_monitor.suppress_producer(i);
-        }
-        else
-        {
-            consume(consumers[i - int(producers.size())]);
-        }
-    }
-}
-
-int main()
-{
-    clear_results_file();
-
-    vector<producer> producers;
-    vector<consumer> consumers;
-
-    read_data(producers, consumers);
-
-    // If data structures are empty, prints an error message and exits.
-    if (producers.empty())
-    {
-        cout << "No data, exiting. ";
-        system("pause");
-        return -1;
-    }
-
-    write_data(producers, consumers);
-
-    start_threads(producers, consumers);
-
-    global_monitor.print_available_cars();
-
-    system("pause");
-}
+// int main()
+// {
+//     vector<producer> producers;
+//     vector<consumer> consumers;
+//
+//     read_data(producers, consumers);
+//
+//     // If data structures are empty, prints an error message and exits.
+//     if (producers.empty())
+//     {
+//         cout << "No data, exiting. ";
+//         system("pause");
+//         return -1;
+//     }
+//
+//     write_data(producers, consumers);
+//
+//     start_threads(producers, consumers);
+//
+//     global_monitor.print_available_cars();
+//
+//     system("pause");
+// }
 
 int main(int argc, char* argv[])
 {
+    clear_results_file();
+
+    cout << "\n";
     MPI_Init(&argc, &argv);
 
     int rank;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    // Controller thread
     if (rank == 0)
     {
         char hello_str[] = "Hello World";
         MPI_Send(hello_str, _countof(hello_str), MPI_CHAR, 1, 0, MPI_COMM_WORLD);
     }
+        // Data manager thread
     else if (rank == 1)
     {
         char hello_str[12];
         MPI_Recv(hello_str, _countof(hello_str), MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        printf("Rank 1 received string %s from Rank 0\n", hello_str);
+        cout << "Rank 1 received string " << hello_str << " from Rank 0\n";
     }
+
     else if (rank <= 5)
     {
-        
     }
 
     MPI_Finalize();
+    cout << "\n";
     return 0;
 }
