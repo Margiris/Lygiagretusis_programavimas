@@ -1,5 +1,4 @@
 #include <mpi.h>
-#include <cstdlib>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -7,20 +6,23 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
-#include <omp.h>
+#include <stdlib.h>
 
 using namespace std;
 
-const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_1.csv)";
-// const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_2.csv)";
-// const string data_filename = R"(.\..\L2data\IFF-6-10_BurakauskasM_L2_dat_3.csv)";
-const string results_filename = R"(IFF-6-10_BurakauskasM_L2b_rez.txt)";
+const string data_filename = R"(.\..\L3data\IFF-6-10_BurakauskasM_L3_dat_1.csv)";
+// const string data_filename = R"(.\..\L3data\IFF-6-10_BurakauskasM_L3_dat_2.csv)";
+// const string data_filename = R"(.\..\L3data\IFF-6-10_BurakauskasM_L3_dat_3.csv)";
+const string results_filename = R"(IFF-6-10_BurakauskasM_L3a_rez.txt)";
 
 const char delimiter = ',';
 // Size of the main data structure.
 const int total_size = 8;
 // Number of times consumer threads try to remove their items from available cars list.
 const int allowed_tries_after_produce = 1;
+
+const int producer_thread_count = 6;
+const int consumer_thread_count = 5;
 
 struct car
 {
@@ -48,15 +50,7 @@ class monitor
     // Arrays that indicate whether producer and consumer threads exist.
     bool producers_exist_[100]{};
     bool consumers_exit_[100]{};
-
-    // Locks used to protect arrays. Names correspond to the objects they are for.
-    omp_lock_t omp_lock_available_cars_{};
-    omp_lock_t omp_lock_producers_exist_{};
-    omp_lock_t omp_lock_consumers_exist_{};
-
-    omp_lock_t omp_lock_less_than_min_{};
-    omp_lock_t omp_lock_more_than_max_{};
-
+    
     /**
      * \brief Finds index in available_cars_ array for specified year value in ascending order.
      * \param year Value to find index for.
@@ -151,14 +145,6 @@ class monitor
      */
     monitor()
     {
-        // Initialization of locks.
-        omp_init_lock(&omp_lock_available_cars_);
-        omp_init_lock(&omp_lock_producers_exist_);
-        omp_init_lock(&omp_lock_consumers_exist_);
-
-        omp_init_lock(&omp_lock_less_than_min_);
-        omp_init_lock(&omp_lock_more_than_max_);
-
         available_cars_count_ = 0;
 
         for (auto& producer_exists : producers_exist_)
@@ -211,9 +197,7 @@ class monitor
      */
     void announce_producer(const int index)
     {
-        omp_set_lock(&omp_lock_producers_exist_);
         producers_exist_[index] = true;
-        omp_unset_lock(&omp_lock_producers_exist_);
     }
 
     /**
@@ -222,9 +206,7 @@ class monitor
      */
     void suppress_producer(const int index)
     {
-        omp_set_lock(&omp_lock_producers_exist_);
         producers_exist_[index] = false;
-        omp_unset_lock(&omp_lock_producers_exist_);
     }
 
     /**
@@ -233,9 +215,7 @@ class monitor
      */
     void announce_consumer(const int index)
     {
-        omp_set_lock(&omp_lock_consumers_exist_);
         producers_exist_[index] = true;
-        omp_unset_lock(&omp_lock_consumers_exist_);
     }
 
     /**
@@ -244,9 +224,7 @@ class monitor
      */
     void suppress_consumer(const int index)
     {
-        omp_set_lock(&omp_lock_consumers_exist_);
         producers_exist_[index] = false;
-        omp_unset_lock(&omp_lock_consumers_exist_);
     }
 
     /**
@@ -256,24 +234,19 @@ class monitor
      */
     void add_available_car(const car new_car)
     {
-        omp_set_lock(&omp_lock_available_cars_);
 
         if (is_consuming() && available_cars_count_ >= total_size)
         {
-            omp_set_lock(&omp_lock_more_than_max_);
         }
 
         if (available_cars_count_ < total_size)
         {
             list_car(new_car.year);
 
-            omp_unset_lock(&omp_lock_more_than_max_);
         }
         else
         {
         }
-
-        omp_unset_lock(&omp_lock_available_cars_);
     }
 
     /**
@@ -284,23 +257,17 @@ class monitor
      */
     bool remove_available_car(const order order1)
     {
-        omp_set_lock(&omp_lock_available_cars_);
-
         auto was_removed = false;
 
         if (is_producing() && available_cars_count_ <= 0)
         {
-            omp_set_lock(&omp_lock_less_than_min_);
         }
 
         if (available_cars_count_ > 0)
         {
             was_removed = unlist_car(order1.year);
-
-            omp_unset_lock(&omp_lock_less_than_min_);
         }
 
-        omp_unset_lock(&omp_lock_available_cars_);
         return was_removed;
     }
 
@@ -494,8 +461,12 @@ void write_data(vector<producer>& producers, vector<consumer>& consumers)
  * \brief Calls monitor function to add each car from producer.cars_data object.
  * \param producer1 Producer object.
  */
-void produce(producer producer1)
+void produce(int rank)
 {
+    cout << rank << " trying to produce\n";
+    vector<car> cars;
+    producer producer1(cars);
+
     for (const auto& a_car : producer1.cars_data)
     {
         global_monitor.add_available_car(a_car);
@@ -507,8 +478,12 @@ void produce(producer producer1)
  * longer producing calls monitor function to remove orders in consumer.orders_data object.
  * \param consumer1 Consumer object.
  */
-void consume(consumer consumer1)
+void consume(int rank)
 {
+    cout << rank << " trying to consume\n";
+    vector<order> orders;
+    consumer consumer1(orders);
+
     auto tries_after_produce = 0;
 
     while ((global_monitor.is_producing() || tries_after_produce < allowed_tries_after_produce)
@@ -580,7 +555,6 @@ int main(int argc, char* argv[])
 {
     clear_results_file();
 
-    cout << "\n";
     MPI_Init(&argc, &argv);
 
     int rank;
@@ -591,21 +565,30 @@ int main(int argc, char* argv[])
     if (rank == 0)
     {
         char hello_str[] = "Hello World";
-        MPI_Send(hello_str, _countof(hello_str), MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+        MPI_Send(hello_str, 12, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
     }
-        // Data manager thread
+    // Data manager thread
     else if (rank == 1)
     {
-        char hello_str[12];
-        MPI_Recv(hello_str, _countof(hello_str), MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        cout << "Rank 1 received string " << hello_str << " from Rank 0\n";
-    }
+        cout << "\n";
 
-    else if (rank <= 5)
+        char hello_str[12];
+        MPI_Recv(hello_str, 12, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        cout << "Rank 1 received string " << hello_str << " from Rank 0\n";
+
+        cout << "\n";
+    }
+    // Producer threads
+    else if (rank < 2 + producer_thread_count)
     {
+        produce(rank);
+    }
+    // Consumer threads
+    else if (rank < 2 + producer_thread_count + consumer_thread_count)
+    {
+        consume(rank);
     }
 
     MPI_Finalize();
-    cout << "\n";
     return 0;
 }
