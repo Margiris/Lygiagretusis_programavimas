@@ -238,6 +238,12 @@ func FindIndex(availableCars []Order, availableCarsCount int, year int) int {
 func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
 	var index = FindIndex(availableCars, availableCarsCount, year)
 	
+	// fmt.Println(separatorLineCar)
+	// for a := 0; a < availableCarsCount; a++ {
+	// 	fmt.Print(Order2str(availableCars[a]))
+	// }
+	// fmt.Println(separatorLineCar)
+	
 	if year == availableCars[index].year {
 		availableCars[index].count++
 	} else {
@@ -252,26 +258,32 @@ func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, i
 		availableCars[index].year = year
 		availableCarsCount++
 	}
+	// for a := 0; a < availableCarsCount; a++ {
+	// 	fmt.Print(Order2str(availableCars[a]))
+	// }
+	// fmt.Println(separatorLineCar)
 	
 	return availableCars, availableCarsCount, true
 }
 func RemoveCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
+	// fmt.Print("removing " + strconv.Itoa(year))
+	
 	for i := 0; i < availableCarsCount; i++ {
 		if year == availableCars[i].year {
 			if availableCars[i].count > 1 {
 				availableCars[i].count--
 			} else {
-				for o := 0; o < availableCarsCount; o++ {
+				for o := i; o < availableCarsCount; o++ {
 					availableCars[o] = availableCars[o+1]
 				}
 				
 				availableCarsCount--
 			}
-			
+			// fmt.Println(" ok")
 			return availableCars, availableCarsCount, true
 		}
 	}
-	
+	// fmt.Println(" nope")
 	return availableCars, availableCarsCount, false
 }
 
@@ -302,20 +314,22 @@ func DataManager(countOutputChan chan<- int, orderOutputChansChan chan []chan []
 }
 
 func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, responseChan <-chan bool, threadIndex int) {
-	// defer
+	defer synchronizer.Done()
+	defer fmt.Println(strconv.Itoa(threadIndex) + " consumer done")
 	
 	var orders = <-dataInputChan
-	orders = append(orders, Order{-1, -1, threadIndex})
 	
 	var triesAfterProduce = 0
 	var producersExist = false
 	
-	for producersExist || triesAfterProduce < allowedTriesAfterProduce {
+	for triesAfterProduce < allowedTriesAfterProduce {
 		var wasRemoved = false
 		
 		for i := 0; i < len(orders); i++ {
 			orders[i].threadIndex = threadIndex
 			dataOutputChan <- orders[i]
+			
+			// var orderToRemove = orders[i]
 			
 			var wasRemovedOnce = <-responseChan
 			producersExist = <-responseChan
@@ -330,24 +344,37 @@ func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, respons
 				}
 			}
 			
+			// fmt.Println(strconv.Itoa(threadIndex) + " trying to remove " + Order2str(orderToRemove) + "removed = " + strconv.FormatBool(wasRemovedOnce) + " left: ")
+			// for _, o := range orders {
+			// 	fmt.Print(strconv.Itoa(threadIndex) + " " + Order2str(o))
+			// }
 		}
 		
 		if !producersExist && !wasRemoved {
 			triesAfterProduce++
 		}
 	}
-	synchronizer.Done()
+	
+	fmt.Println("ok???")
+	var wasSent = false
+	
+	for !wasSent {
+		dataOutputChan <- Order{-1, -1, threadIndex}
+		wasSent = <-responseChan
+	}
+	
+	
 }
 
 func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseChan <-chan bool, threadIndex int) {
 	defer synchronizer.Done()
+	defer fmt.Println(strconv.Itoa(threadIndex) + " producer done")
 	
 	var cars = <-dataInputChan
 	cars = append(cars, Car{"", "", -1, -1, threadIndex})
 	
 	for i := 0; i < len(cars); i++ {
 		cars[i].threadIndex = threadIndex
-		fmt.Print("sending  " + Car2str(cars[i]))
 		dataOutputChan <- cars[i]
 		
 		var wasAdded = <-responseChan
@@ -358,7 +385,7 @@ func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseCha
 	
 }
 
-func Controller(consumersCount int, producersCount int, orderInputChan <-chan Order, carInputChan <-chan Car, responseOutputChanToConsumers []chan bool, responseOutputChanToProducers []chan bool, resultOutputChan chan<- []Order) {
+func Controller(consumersCount int, producersCount int, orderInputChan <-chan Order, carInputChan chan Car, responseOutputChanToConsumers []chan bool, responseOutputChanToProducers []chan bool, resultOutputChan chan<- []Order) {
 	defer synchronizer.Done()
 	
 	var availableCars = make([]Order, totalSize)
@@ -376,7 +403,6 @@ func Controller(consumersCount int, producersCount int, orderInputChan <-chan Or
 		select {
 		case message := <-carInputChan:
 			var senderIndex = message.threadIndex
-			fmt.Print("received " + Car2str(message))
 			if message.year == -1 {
 				producersCount--
 				fmt.Println("producer " + strconv.Itoa(message.threadIndex) + " finished, " + strconv.Itoa(producersCount) + " left.")
@@ -391,10 +417,9 @@ func Controller(consumersCount int, producersCount int, orderInputChan <-chan Or
 			var senderIndex = message.threadIndex
 			if message.year == -1 {
 				consumersCount--
-				responseOutputChanToConsumers[senderIndex] <- false
-				responseOutputChanToConsumers[senderIndex] <- false
+				responseOutputChanToConsumers[senderIndex] <- true
 				
-				fmt.Println("consumer " + strconv.Itoa(message.threadIndex) + " finished, " + strconv.Itoa(producersCount) + " producers left.")
+				fmt.Println("consumer " + strconv.Itoa(message.threadIndex) + " finished, " + strconv.Itoa(consumersCount) + " consumers left.")
 			} else {
 				var wasRemoved bool
 				availableCars, availableCarsCount, wasRemoved = RemoveCar(availableCars, availableCarsCount, message.year)
