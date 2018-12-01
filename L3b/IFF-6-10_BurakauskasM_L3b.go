@@ -11,11 +11,10 @@ import (
 	"sync"
 )
 
-const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
-
+// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_2.csv"
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_3.csv"
-// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
+const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
 
 const resultsFilename = "IFF-6-10_BurakauskasM_L3b_rez.txt"
 
