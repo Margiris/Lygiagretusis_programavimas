@@ -330,6 +330,7 @@ func Controller(consumersCount int, producersCount int, orderInputChan <-chan Or
 			var senderIndex = message.threadIndex
 			if message.year == -1 {
 				producersCount--
+				responseOutputChanToProducers[senderIndex] <- true
 				fmt.Println("producer " + strconv.Itoa(message.threadIndex) + " finished, " + strconv.Itoa(producersCount) + " left.")
 			} else {
 				var wasAdded bool
