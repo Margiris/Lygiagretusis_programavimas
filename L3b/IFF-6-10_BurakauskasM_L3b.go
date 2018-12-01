@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 )
 
-// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
+const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
+
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_2.csv"
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_3.csv"
-const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
+// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
 
 const resultsFilename = "IFF-6-10_BurakauskasM_L3b_rez.txt"
 
@@ -318,16 +320,29 @@ func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseCha
 
 }
 
-func Controller(consumersCount int, producersCount int, orderInputChan <-chan Order, carInputChan chan Car, responseOutputChanToConsumers []chan bool, responseOutputChanToProducers []chan bool, resultOutputChan chan<- []Order) {
+func Controller(consumersCount int, producersCount int, orderInputChan []chan Order, carInputChan []chan Car, responseOutputChanToConsumers []chan bool, responseOutputChanToProducers []chan bool, resultOutputChan chan<- []Order) {
 	defer synchronizer.Done()
 
 	var availableCars = make([]Order, totalSize)
 	var availableCarsCount = 0
 
 	for consumersCount > 0 || producersCount > 0 {
-		select {
-		case message := <-carInputChan:
+		var cases []reflect.SelectCase
+
+		for _, channel := range carInputChan {
+			cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(channel)})
+		}
+		for _, channel := range orderInputChan {
+			cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(channel)})
+		}
+
+		senderIndex, receivedValue, _ := reflect.Select(cases)
+
+		if senderIndex < len(carInputChan) {
+			message, _ := receivedValue.Interface().(Car)
+
 			var senderIndex = message.threadIndex
+
 			if message.year == -1 {
 				producersCount--
 				responseOutputChanToProducers[senderIndex] <- true
@@ -337,9 +352,11 @@ func Controller(consumersCount int, producersCount int, orderInputChan <-chan Or
 				availableCars, availableCarsCount, wasAdded = AddCar(availableCars, availableCarsCount, message.year)
 				responseOutputChanToProducers[senderIndex] <- wasAdded
 			}
+		} else {
+			message, _ := receivedValue.Interface().(Order)
 
-		case message := <-orderInputChan:
 			var senderIndex = message.threadIndex
+
 			if message.year == -1 {
 				consumersCount--
 				fmt.Println("consumer " + strconv.Itoa(message.threadIndex) + " finished, " + strconv.Itoa(consumersCount) + " consumers left.")
@@ -361,8 +378,8 @@ func main() {
 	var dataManagerToMain = make(chan int)
 	var dataManagerToConsumer []chan []Order
 	var dataManagerToProducer []chan []Car
-	var consumersToController = make(chan Order)
-	var producersToController = make(chan Car)
+	var consumerToController []chan Order
+	var producerToController []chan Car
 	var controllerToConsumer []chan bool
 	var controllerToProducer []chan bool
 	var controllerToDataManager = make(chan []Order)
@@ -375,22 +392,24 @@ func main() {
 
 	for i := 0; i < consumersCount; i++ {
 		dataManagerToConsumer = append(dataManagerToConsumer, make(chan []Order))
+		consumerToController = append(consumerToController, make(chan Order))
 		controllerToConsumer = append(controllerToConsumer, make(chan bool))
 		synchronizer.Add(1)
-		go Consumer(dataManagerToConsumer[i], consumersToController, controllerToConsumer[i], i)
+		go Consumer(dataManagerToConsumer[i], consumerToController[i], controllerToConsumer[i], i)
 	}
 	mainToDataManagerForConsumers <- dataManagerToConsumer
 
 	for i := 0; i < producersCount; i++ {
 		dataManagerToProducer = append(dataManagerToProducer, make(chan []Car))
+		producerToController = append(producerToController, make(chan Car))
 		controllerToProducer = append(controllerToProducer, make(chan bool))
 		synchronizer.Add(1)
-		go Producer(dataManagerToProducer[i], producersToController, controllerToProducer[i], i)
+		go Producer(dataManagerToProducer[i], producerToController[i], controllerToProducer[i], i)
 	}
 	mainToDataManagerForProducers <- dataManagerToProducer
 
 	synchronizer.Add(1)
-	go Controller(consumersCount, producersCount, consumersToController, producersToController, controllerToConsumer, controllerToProducer, controllerToDataManager)
+	go Controller(consumersCount, producersCount, consumerToController, producerToController, controllerToConsumer, controllerToProducer, controllerToDataManager)
 
 	synchronizer.Wait()
 }
