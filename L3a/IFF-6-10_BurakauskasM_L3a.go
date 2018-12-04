@@ -10,10 +10,10 @@ import (
 	"sync"
 )
 
-// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
+const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_1.csv"
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_2.csv"
 // const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_3.csv"
-const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
+// const dataFilename = "../L3data/IFF-6-10_BurakauskasM_L3_dat_4.csv"
 
 const resultsFilename = "IFF-6-10_BurakauskasM_L3a_rez.txt"
 
@@ -188,12 +188,6 @@ func FindIndex(availableCars []Order, availableCarsCount int, year int) int {
 func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
 	var index = FindIndex(availableCars, availableCarsCount, year)
 	
-	// fmt.Println(separatorLineCar)
-	// for a := 0; a < availableCarsCount; a++ {
-	// 	fmt.Print(Order2str(availableCars[a]))
-	// }
-	// fmt.Println(separatorLineCar)
-	
 	if year == availableCars[index].year {
 		availableCars[index].count++
 	} else {
@@ -208,16 +202,10 @@ func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, i
 		availableCars[index].year = year
 		availableCarsCount++
 	}
-	// for a := 0; a < availableCarsCount; a++ {
-	// 	fmt.Print(Order2str(availableCars[a]))
-	// }
-	// fmt.Println(separatorLineCar)
 	
 	return availableCars, availableCarsCount, true
 }
 func RemoveCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
-	// fmt.Print("removing " + strconv.Itoa(year))
-	
 	for i := 0; i < availableCarsCount; i++ {
 		if year == availableCars[i].year {
 			if availableCars[i].count > 1 {
@@ -229,11 +217,10 @@ func RemoveCar(availableCars []Order, availableCarsCount int, year int) ([]Order
 				
 				availableCarsCount--
 			}
-			// fmt.Println(" ok")
 			return availableCars, availableCarsCount, true
 		}
 	}
-	// fmt.Println(" nope")
+	
 	return availableCars, availableCarsCount, false
 }
 
@@ -291,7 +278,7 @@ func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, respons
 			}
 		}
 		
-		if !producersExist && !wasRemoved {
+		if (!producersExist && !wasRemoved) || len(orders) <= 0 {
 			triesAfterProduce++
 		}
 	}
@@ -301,7 +288,6 @@ func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, respons
 
 func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseChan <-chan bool, threadIndex int) {
 	defer synchronizer.Done()
-	defer fmt.Println(strconv.Itoa(threadIndex) + " producer done")
 	
 	var cars = <-dataInputChan
 	cars = append(cars, Car{"", "", -1, -1, threadIndex})
@@ -396,5 +382,3 @@ func main() {
 	
 	synchronizer.Wait()
 }
-
-// Gabrielė myli Margirį func todosmth "done" chan var type C
