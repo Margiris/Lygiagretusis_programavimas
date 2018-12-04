@@ -3,6 +3,8 @@
 
 from PIL import Image
 
+import gui
+
 numberOfThreads = 12
 outputImagePath = "aaa.png"
 
