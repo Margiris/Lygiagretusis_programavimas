@@ -31,6 +31,7 @@ const totalSize = 30
 // Number of times consumer threads try to remove their items from available cars list.
 const allowedTriesAfterProduce = 1
 
+// Structure of Car type data
 type Car struct {
 	manufacturer string
 	model        string
@@ -39,25 +40,31 @@ type Car struct {
 	threadIndex  int
 }
 
+// Returns formatted string with required properties of car object
 func Car2str(car Car) string {
 	return fmt.Sprintf("%-14s %-19s %4d %10.2f\n", car.manufacturer, car.model, car.year, car.price)
 }
 
+// Structure of Order type data
 type Order struct {
 	year        int
 	count       int
 	threadIndex int
 }
 
+// Returns formatted string with required properties of order object
 func Order2str(order Order) string {
 	return fmt.Sprintf("%5d %7d\n", order.year, order.count)
 }
 
+// Checks if error was null and panics if not
 func check(e error) {
 	if e != nil {
 		panic(e)
 	}
 }
+
+// Reads from file to Car and Order types
 func ReadData() ([][]Order, [][]Car) {
 	dataFilePath, _ := filepath.Abs(dataFilename)
 	
@@ -106,6 +113,8 @@ func ReadData() ([][]Order, [][]Car) {
 	
 	return consumerData, producerData
 }
+
+// Writes Order and Car type data to file
 func WriteData(consumers [][]Order, producers [][]Car) {
 	var buffer strings.Builder
 	
@@ -145,6 +154,8 @@ func WriteData(consumers [][]Order, producers [][]Car) {
 	_, err = resultsFile.WriteString(buffer.String())
 	check(err)
 }
+
+// Appends Order data to file
 func WriteResults(results []Order) {
 	var buffer strings.Builder
 	
@@ -172,6 +183,7 @@ func WriteResults(results []Order) {
 	check(err)
 }
 
+// Returns int type number representing an index in Order type array
 func FindIndex(availableCars []Order, availableCarsCount int, year int) int {
 	if availableCarsCount == 0 {
 		return 0
@@ -185,6 +197,8 @@ func FindIndex(availableCars []Order, availableCarsCount int, year int) int {
 	
 	return availableCarsCount
 }
+
+// Increases index of specified year in Order array if Order object with that year value already exists, inserts new Order type object in a sorted manner otherwise
 func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
 	var index = FindIndex(availableCars, availableCarsCount, year)
 	
@@ -205,6 +219,8 @@ func AddCar(availableCars []Order, availableCarsCount int, year int) ([]Order, i
 	
 	return availableCars, availableCarsCount, true
 }
+
+// Decreases index of specified year in Order array if Order object with that year value has count higher than 1, removes new Order type object and leaves no gap otherwise
 func RemoveCar(availableCars []Order, availableCarsCount int, year int) ([]Order, int, bool) {
 	for i := 0; i < availableCarsCount; i++ {
 		if year == availableCars[i].year {
@@ -224,8 +240,12 @@ func RemoveCar(availableCars []Order, availableCarsCount int, year int) ([]Order
 	return availableCars, availableCarsCount, false
 }
 
+// Synchronizer object to wait for threads' finish
 var synchronizer = sync.WaitGroup{}
 
+// Data manager gets data by calling ReadData, sends count of consumers and producers to main, then receives channels for consumers and producers.
+// Later sends data using those channels.
+// Finally receives results  of Order type and calls WriteResults to output them.
 func DataManager(countOutputChan chan<- int, orderOutputChansChan chan []chan []Order, carOutputChansChan chan []chan []Car, resultInputChan <-chan []Order) {
 	defer synchronizer.Done()
 	
@@ -249,6 +269,7 @@ func DataManager(countOutputChan chan<- int, orderOutputChansChan chan []chan []
 	WriteResults(results)
 }
 
+// Consumer receives data from data manager, and sends it's data to controller one by one until all data is sent or all producers finish.
 func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, responseChan <-chan bool, threadIndex int) {
 	defer synchronizer.Done()
 	
@@ -286,6 +307,7 @@ func Consumer(dataInputChan <-chan []Order, dataOutputChan chan<- Order, respons
 	dataOutputChan <- Order{-1, -1, threadIndex}
 }
 
+// Producer receives data from data manager, and sends it's data to controller one by one until all data is sent.
 func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseChan <-chan bool, threadIndex int) {
 	defer synchronizer.Done()
 	
@@ -304,6 +326,9 @@ func Producer(dataInputChan <-chan []Car, dataOutputChan chan<- Car, responseCha
 	
 }
 
+// Controller receives data from consumers or producers and removes or adds that data to main data structure respectively until there are no more consumers and producers.
+// Then sends a response back to thread that the data was received from.
+// Finally sends main data structure to data manager.
 func Controller(consumersCount int, producersCount int, orderInputChan <-chan Order, carInputChan chan Car, responseOutputChanToConsumers []chan bool, responseOutputChanToProducers []chan bool, resultOutputChan chan<- []Order) {
 	defer synchronizer.Done()
 	
@@ -344,6 +369,7 @@ func Controller(consumersCount int, producersCount int, orderInputChan <-chan Or
 }
 
 func main() {
+	// Create channels
 	var mainToDataManagerForConsumers = make(chan []chan []Order)
 	var mainToDataManagerForProducers = make(chan []chan []Car)
 	var dataManagerToMain = make(chan int)
@@ -355,30 +381,41 @@ func main() {
 	var controllerToProducer []chan bool
 	var controllerToDataManager = make(chan []Order)
 	
+	// Start data manager thread to read data
 	synchronizer.Add(1)
 	go DataManager(dataManagerToMain, mainToDataManagerForConsumers, mainToDataManagerForProducers, controllerToDataManager)
 	
+	// Receive how many consumers and producers there are
 	var consumersCount = <-dataManagerToMain
 	var producersCount = <-dataManagerToMain
 	
+	// Create channels for each consumer thread and start them.
 	for i := 0; i < consumersCount; i++ {
 		dataManagerToConsumer = append(dataManagerToConsumer, make(chan []Order))
 		controllerToConsumer = append(controllerToConsumer, make(chan bool))
 		synchronizer.Add(1)
 		go Consumer(dataManagerToConsumer[i], consumersToController, controllerToConsumer[i], i)
 	}
+	
+	// Send channels to data manager that it will use to send data to consumers
 	mainToDataManagerForConsumers <- dataManagerToConsumer
 	
+	// Create channels for each producer thread and start them.
 	for i := 0; i < producersCount; i++ {
 		dataManagerToProducer = append(dataManagerToProducer, make(chan []Car))
 		controllerToProducer = append(controllerToProducer, make(chan bool))
 		synchronizer.Add(1)
 		go Producer(dataManagerToProducer[i], producersToController, controllerToProducer[i], i)
 	}
+	
+	// Send channels to data manager that it will use to send data to consumers
 	mainToDataManagerForProducers <- dataManagerToProducer
 	
 	synchronizer.Add(1)
+
+	// Start controller thread
 	go Controller(consumersCount, producersCount, consumersToController, producersToController, controllerToConsumer, controllerToProducer, controllerToDataManager)
 	
+	// Wait for all threads to finish
 	synchronizer.Wait()
 }
