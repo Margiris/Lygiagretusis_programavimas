@@ -36,8 +36,6 @@ class ResizingImageDisplay(Canvas):
         # resize the canvas
         self.config(width=self.width - buttonsWidth, height=self.height - statusBarHeight)
 
-        # print(deltaX, deltaY)
-
         self.image = image
 
         self.image.thumbnail((self.width, self.height), Image.ANTIALIAS)
@@ -60,7 +58,7 @@ def brightness(point):
 
 def main():
     mainWindow = Tk()
-    mainWindow.geometry('1600x1000')
+    mainWindow.geometry('160x100')
 
     frameMain = Frame(mainWindow, bg="blue")
     frameMain.pack(side=TOP, fill=BOTH, expand=YES)
@@ -80,7 +78,7 @@ def main():
     inputImagePath = openImage()
     image1 = Image.open(inputImagePath, 'r')
 
-    imageDisplay = ResizingImageDisplay(frameImage, image1, width=1366, height=768, highlightthickness=0)
+    imageDisplay = ResizingImageDisplay(frameImage, copy.copy(image1), width=1366, height=768, highlightthickness=0)
     imageDisplay.bind("<Configure>", lambda event: imageDisplay.on_resize(event, copy.copy(image1)))
 
     status = Label(frameStatusBar, text="nothing", bd=1, relief=SUNKEN, anchor=W)
