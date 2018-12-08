@@ -8,8 +8,8 @@ import copy
 
 outputImagePath = "aaa"
 
-statusBarHeight = 10
-buttonsWidth = 50
+statusBarHeight = 19
+buttonsWidth = 15
 
 # noinspection SpellCheckingInspection
 imageInitialData = '''iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAF+mlUWHRYTUw6Y29tLmFkb2
@@ -154,6 +154,13 @@ NdkqQEGOiSJCXAQJckKQEGuiRJCTDQJUlKgIEuSVICDHRJkhJgoEuSlAADXZKkBBjokiQlwECXJCkBBr
 QY6JIkJeD/Axsg0dg2nBWMAAAAAElFTkSuQmCC'''
 
 
+class ResizeEvent(Event):
+    def __init__(self, width, height):
+        super().__init__()
+        self.width = width
+        self.height = height
+
+
 class ResizingImageDisplay(Canvas):
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
@@ -171,31 +178,37 @@ class ResizingImageDisplay(Canvas):
         self.pack(fill=BOTH, expand=YES)
 
     def on_resize(self, event):
-        deltaX = (mainWindow.winfo_width() - frameButtons.winfo_width() - self.width) / 2
-        deltaY = (mainWindow.winfo_height() - frameStatusBar.winfo_height() - self.height) / 2
+        deltaX = (event.width - self.width) / 2
+        deltaY = (event.height - self.height) / 2
 
-        print(self.width, self.height)
-        self.width = mainWindow.winfo_width() - frameButtons.winfo_width()
-        self.height = mainWindow.winfo_height() - frameStatusBar.winfo_height()
-        print(self.width, self.height)
+        self.width = event.width
+        self.height = event.height
 
         # resize the canvas
+        # imageFrame.config(width=self.width, height=self.height)
         self.config(width=self.width, height=self.height)
+        print(mainWindow.winfo_width(), self.height)
 
         self.imageForDisplay = copy.copy(self.image)
         self.imageForDisplay.thumbnail((self.width, self.height), Image.ANTIALIAS)
         self.imageThumbnail = ImageTk.PhotoImage(self.imageForDisplay)
         self.itemconfig(self.imageOnCanvas, image=self.imageThumbnail)
         self.move(self.imageOnCanvas, deltaX, deltaY)
-        print(deltaX, deltaY)
 
 
 def openImage():
     imagePath = filedialog.askopenfilename(title="Select photo")
     imageDisplay.image = Image.open(imagePath)
-    mainWindow.geometry(str(imageDisplay.image.width + frameButtons.winfo_width()) + "x" + str(
-        imageDisplay.image.height + frameStatusBar.winfo_height()))
-    imageDisplay.on_resize(None)
+
+    if mainWindow.state() == "zoomed":
+        event = ResizeEvent(mainWindow.winfo_width() - buttonsFrame.winfo_width(),
+                            mainWindow.winfo_height())
+    else:
+        mainWindow.geometry(str(imageDisplay.image.width + buttonsFrame.winfo_width()) + "x" +
+                            str(imageDisplay.image.height))
+        event = ResizeEvent(imageDisplay.image.width, imageDisplay.image.height)
+
+    imageDisplay.on_resize(event)
 
 
 def brightness(point):
@@ -205,27 +218,27 @@ def brightness(point):
 if __name__ == "__main__":
     mainWindow = Tk()
 
-    frameStatusBar = Frame(mainWindow)
-    frameStatusBar.pack(side=BOTTOM, fill=X, expand=NO)
+    # frameStatusBar = Frame(mainWindow)
+    # frameStatusBar.pack(side=BOTTOM, fill=X, expand=NO)
 
-    frameMain = Frame(mainWindow)
-    frameMain.pack(side=TOP, fill=BOTH, expand=YES)
+    # mainFrame = Frame(mainWindow)
+    # mainFrame.pack(side=LEFT, fill=BOTH, expand=YES)
 
-    frameImage = Frame(frameMain)
-    frameImage.pack(side=LEFT, fill=BOTH, expand=YES)
+    # imageFrame = Frame(mainFrame), width=120
+    # imageFrame.pack(side=LEFT, fill=BOTH, expand=YES)
 
-    frameButtons = Frame(frameMain)
-    frameButtons.pack(side=LEFT, fill=Y, expand=NO)
+    buttonsFrame = Frame(mainWindow)
+    buttonsFrame.pack(side=RIGHT, fill=Y, expand=NO)
 
-    buttonOpen = Button(frameButtons, text="Open image...", command=openImage)
+    buttonOpen = Button(buttonsFrame, text="Open image...", width=buttonsWidth, command=openImage)
     buttonOpen.pack(side=RIGHT, anchor=NE)
 
-    imageDisplay = ResizingImageDisplay(frameImage, highlightthickness=0)
-    mainWindow.geometry(str(imageDisplay.image.width + 85) + "x" + str(imageDisplay.image.height + 19))
+    imageDisplay = ResizingImageDisplay(mainWindow, highlightthickness=0, bg="red")
+    mainWindow.geometry(str(imageDisplay.image.width + 115) + "x" + str(imageDisplay.image.height))
     imageDisplay.bind("<Configure>", lambda event: imageDisplay.on_resize(event))
 
-    status = Label(frameStatusBar, text="nothing", bd=1, relief=SUNKEN, anchor=W)
-    status.pack(side=BOTTOM, fill=X)
+    # status = Label(frameStatusBar, text="nothing", bd=1, relief=SUNKEN, anchor=W)
+    # status.pack(side=BOTTOM, fill=X)
 
     mainWindow.mainloop()
 else:
