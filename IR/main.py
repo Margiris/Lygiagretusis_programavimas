@@ -1,8 +1,4 @@
-# Pillow >= 1.0 no longer supports “import Image”. Please use “from PIL import Image” instead.
-# Pillow >= 2.1.0 no longer supports “import _imaging”. Please use “from PIL.Image import core as _imaging” instead.
-
 from PIL import Image
-
 import gui
 
 numberOfThreads = 12
