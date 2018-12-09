@@ -6,10 +6,8 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 import copy
 
-outputImagePath = "aaa"
-
 statusBarHeight = 19
-buttonsWidth = 10
+buttonsWidth = 15
 
 # noinspection SpellCheckingInspection
 imageInitialData = '''iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAF+mlUWHRYTUw6Y29tLmFkb2
@@ -166,6 +164,8 @@ class ResizingImageDisplay(Canvas):
 
         self.image = Image.open(BytesIO(base64.b64decode(imageInitialData)))
 
+        self.brightness = 0
+
         self.width = self.image.width
         self.height = self.image.height
 
@@ -176,7 +176,7 @@ class ResizingImageDisplay(Canvas):
 
         self.pack(fill=BOTH, expand=YES)
 
-    def updateImage(self, event):
+    def onResize(self, event):
         deltaX = (event.width - self.width) / 2
         deltaY = (event.height - self.height) / 2
 
@@ -185,7 +185,6 @@ class ResizingImageDisplay(Canvas):
 
         # resize the canvas
         self.config(width=self.width, height=self.height)
-        print(mainWindow.winfo_width(), self.height)
 
         self.imageForDisplay = copy.copy(self.image)
         self.imageForDisplay.thumbnail((self.width, self.height), Image.ANTIALIAS)
@@ -193,38 +192,54 @@ class ResizingImageDisplay(Canvas):
         self.itemconfig(self.imageOnCanvas, image=self.imageThumbnail)
         self.move(self.imageOnCanvas, deltaX, deltaY)
 
+    def updateImage(self):
+        if mainWindow.state() == "zoomed":
+            event = ResizeEvent(mainWindow.winfo_width() - controlsFrame.winfo_width(),
+                                mainWindow.winfo_height())
+        else:
+            mainWindow.geometry(str(imageDisplay.image.width + controlsFrame.winfo_width()) + "x" +
+                                str(imageDisplay.image.height))
+            event = ResizeEvent(imageDisplay.image.width, imageDisplay.image.height)
+
+        self.onResize(event)
+
 
 def openImage():
     imagePath = filedialog.askopenfilename(title="Select photo")
+    sliderBrightness.set(0)
     imageDisplay.image = Image.open(imagePath)
-
-    if mainWindow.state() == "zoomed":
-        event = ResizeEvent(mainWindow.winfo_width() - buttonsFrame.winfo_width(),
-                            mainWindow.winfo_height())
-    else:
-        mainWindow.geometry(str(imageDisplay.image.width + buttonsFrame.winfo_width()) + "x" +
-                            str(imageDisplay.image.height))
-        event = ResizeEvent(imageDisplay.image.width, imageDisplay.image.height)
-
-    imageDisplay.updateImage(event)
+    imageDisplay.updateImage()
 
 
-def brightness(point):
-    return point * 0.5
+def saveImage():
+    outputImagePath = filedialog.asksaveasfilename(title="Save as")
+    imageDisplay.image.save(outputImagePath)
+
+
+def brightness(value):
+    imageDisplay.image = imageDisplay.image.point(lambda point: point + int(value) - int(imageDisplay.brightness))
+    imageDisplay.brightness = value
+    imageDisplay.updateImage()
 
 
 if __name__ == "__main__":
     mainWindow = Tk()
 
-    buttonsFrame = Frame(mainWindow)
-    buttonsFrame.pack(side=RIGHT, fill=Y, expand=NO)
+    controlsFrame = Frame(mainWindow)
+    controlsFrame.pack(side=RIGHT, fill=Y, expand=NO)
 
-    buttonOpen = Button(buttonsFrame, text="Open...", width=buttonsWidth, command=openImage)
-    buttonOpen.pack(side=RIGHT, anchor=NE)
+    buttonOpen = Button(controlsFrame, text="Open...", width=buttonsWidth, command=openImage)
+    buttonOpen.pack()
+
+    sliderBrightness = Scale(controlsFrame, from_=0, to=200, orient=HORIZONTAL, width=buttonsWidth, command=brightness)
+    sliderBrightness.pack()
+
+    buttonSave = Button(controlsFrame, text="Save image...", width=buttonsWidth, command=saveImage)
+    buttonSave.pack()
 
     imageDisplay = ResizingImageDisplay(mainWindow, highlightthickness=0)
     mainWindow.geometry(str(imageDisplay.image.width + (buttonsWidth * 7) + 10) + "x" + str(imageDisplay.image.height))
-    imageDisplay.bind("<Configure>", lambda event: imageDisplay.updateImage(event))
+    imageDisplay.bind("<Configure>", lambda event: imageDisplay.onResize(event))
 
     mainWindow.mainloop()
 else:

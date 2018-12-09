@@ -1,15 +1,13 @@
 from PIL import Image
-import gui
 
 numberOfThreads = 12
-outputImagePath = "aaa.png"
 
-# inputImagePath = "test1.png"
-inputImagePath = "to2.jpg"
+inputImagePath = "to4.jpg"
+outputImagePath = "to3.jpg"
 
 
 def brightness(point):
-    return point * 10
+    return point / 10
 
 
 image = Image.open(inputImagePath, 'r')
