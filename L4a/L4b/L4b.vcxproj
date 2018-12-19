@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C47D03C2-A0EE-4F0C-AFBE-2DEA8796DA97}</ProjectGuid>
-    <RootNamespace>L4a</RootNamespace>
+    <ProjectGuid>{548B5ED1-5719-46D7-8452-905EE7D2F93E}</ProjectGuid>
+    <RootNamespace>L4b</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -151,7 +151,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="IFF-6-10_BurakauskasM_L4a.cu" />
+    <CudaCompile Include="IFF-6-10_BurakauskasM_L4b.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

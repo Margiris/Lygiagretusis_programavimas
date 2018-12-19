@@ -1,0 +1,108 @@
+Nr. Gamintojas     Modelis             Metai     Kaina
+------------------------------------------------------
+  1 Mazda          B-Series             1986  99468.22
+  2 Alfa-Romeo     Spider               1994  17489.27
+  3 GMC            Savana               2008  17973.92
+  4 Mercedes-Benz  600SL                1993  59401.34
+  5 Toyota         Land-Cruiser         1993   8456.74
+  6 Mitsubishi     Truck                1988  53495.35
+  7 Ford           Laser                1987  85940.98
+  8 MINI           Clubman              2008  51218.74
+  9 Buick          Regal                1997   5356.26
+ 10 Toyota         Tacoma               2007   9602.77
+ 11 Kia            Rondo                2010  31902.79
+ 12 Plymouth       Grand-Voyager        1997  33220.09
+ 13 Mercury        Villager             1997  95108.88
+------------------------------------------------------
+  1 Nissan         Altima               1998  17204.36
+  2 Lincoln        Town-Car             1999  55503.53
+  3 Mazda          CX-7                 2007  70610.79
+  4 Volkswagen     GTI                  2011  96871.97
+  5 Toyota         Supra                1993  22201.86
+  6 Isuzu          Rodeo                2003  43238.02
+  7 Audi           S6                   2003  43569.43
+  8 Audi           Allroad              2005  58752.73
+  9 Toyota         Celica               2005   9694.95
+ 10 Chevrolet      Express-3500         2005  71579.16
+ 11 Cadillac       CTS-V                2006  38116.73
+------------------------------------------------------
+  1 Maserati       Quattroporte         2006  14687.21
+  2 Saab           9-5                  2000  92896.32
+  3 Ford           Crown-Victoria       2001  84710.62
+  4 Volvo          S40                  2010  59327.06
+  5 Mercedes-Benz  SL-Class             1990  94446.20
+  6 Volvo          240                  1992  35786.97
+  7 Dodge          Ram-3500             2010  73448.15
+  8 Cadillac       STS                  2010  61325.46
+  9 Toyota         Venza                2011  44882.01
+ 10 Chevrolet      Cruze                2012  31623.96
+ 11 Toyota         Sequoia              2001  78808.04
+ 12 GMC            Yukon-XL-1500        2013  41583.91
+------------------------------------------------------
+  1 Bentley        Continental          2012  10116.71
+  2 Acura          Legend               1994  96165.09
+  3 Maybach        62                   2009  62514.16
+  4 Land-Rover     Discovery            2012  62205.43
+  5 Subaru         Legacy               1992   6001.77
+  6 Porsche        Boxster              1998  65951.61
+  7 Chevrolet      Sportvan-G30         1995  92969.32
+  8 Lexus          GX                   2007   6940.21
+  9 Dodge          Challenger           2010  25304.73
+ 10 Chrysler       Crossfire            2008  30998.44
+ 11 Toyota         Ipsum                2000  74333.60
+ 12 Land-Rover     Range-Rover-Sport    2008  77909.41
+ 13 Volkswagen     Jetta                2007   6374.14
+ 14 Volvo          S80                  2003  11063.31
+ 15 Dodge          Caravan              1999    771.29
+ 16 Mitsubishi     Lancer               2007  99113.67
+ 17 GMC            Rally-Wagon-2500     1994  71868.72
+ 18 Land-Rover     Discovery            2008  72272.74
+ 19 Nissan         350Z-Roadster        2006  30725.46
+ 20 Toyota         Xtra                 1992  66090.60
+ 21 Chevrolet      Camaro               1997  77223.11
+ 22 Jaguar         S-Type               2002  97468.14
+------------------------------------------------------
+  1 Saturn         S-Series             2000  57253.32
+  2 Honda          Odyssey              2007  98815.07
+  3 Lexus          GS                   2005  68025.17
+  4 GMC            Yukon-XL-1500        2010  12955.30
+  5 Kia            Forte                2010  32906.07
+  6 Chevrolet      Silverado-3500       2003  44328.09
+  7 Mazda          B-Series             1986  76145.17
+  8 Volvo          S40                  2010  10498.70
+  9 Volkswagen     R32                  2009  54184.49
+ 10 Pontiac        Firebird             1987  51472.17
+ 11 Mercury        Sable                2000  33670.41
+ 12 Lexus          LS                   1991  13032.77
+ 13 Mercedes-Benz  M-Class              1998  59373.06
+ 14 Mazda          B-Series             1986   2308.52
+ 15 Infiniti       QX                   2000  13992.89
+ 16 Buick          Regal                1992  91304.09
+ 17 Volkswagen     Golf                 2010  99674.17
+ 18 Mitsubishi     GTO                  1991  62270.71
+------------------------------------------------------
+Nr. Gamintojas                                     Modelis                                          Metai       Kaina
+---------------------------------------------------------------------------------------------------------------------
+  1 MazdaNissanMaseratiBentleySaturn               B-SeriesAltimaQuattroporteContinentalS-Series    10002   198729.82
+  2 Alfa-RomeoLincolnSaabAcuraHonda                SpiderTown-Car9-5LegendOdyssey                    9994   360869.28
+  3 GMCMazdaFordMaybachLexus                       SavanaCX-7Crown-Victoria62GS                     10030   303834.66
+  4 Mercedes-BenzVolkswagenVolvoLand-RoverGMC      600SLGTIS40DiscoveryYukon-XL-1500                10036   290761.10
+  5 ToyotaToyotaMercedes-BenzSubaruKia             Land-CruiserSupraSL-ClassLegacyForte              9978   164012.64
+  6 MitsubishiIsuzuVolvoPorscheChevrolet           TruckRodeo240BoxsterSilverado-3500                9984   242800.04
+  7 FordAudiDodgeChevroletMazda                    LaserS6Ram-3500Sportvan-G30B-Series               9981   372073.05
+  8 MINIAudiCadillacLexusVolvo                     ClubmanAllroadSTSGXS40                           10040   188735.84
+  9 BuickToyotaToyotaDodgeVolkswagen               RegalCelicaVenzaChallengerR32                    10032   139422.44
+ 10 ToyotaChevroletChevroletChryslerPontiac        TacomaExpress-3500CruzeCrossfireFirebird         10019   195276.50
+ 11 KiaCadillacToyotaToyotaMercury                 RondoCTS-VSequoiaIpsumSable                      10017   256831.57
+ 12 PlymouthGMCLand-RoverLexus                     Grand-VoyagerYukon-XL-1500Range-Rover-SportLS     8009   165746.18
+ 13 MercuryVolkswagenMercedes-Benz                 VillagerJettaM-Class                              6002   160856.08
+ 14 VolvoMazda                                     S80B-Series                                       3989    13371.83
+ 15 DodgeInfiniti                                  CaravanQX                                         3999    14764.18
+ 16 MitsubishiBuick                                LancerRegal                                       3999   190417.76
+ 17 GMCVolkswagen                                  Rally-Wagon-2500Golf                              4004   171542.89
+ 18 Land-RoverMitsubishi                           DiscoveryGTO                                      3999   134543.45
+ 19 Nissan                                         350Z-Roadster                                     2006    30725.46
+ 20 Toyota                                         Xtra                                              1992    66090.60
+ 21 Chevrolet                                      Camaro                                            1997    77223.11
+ 22 Jaguar                                         S-Type                                            2002    97468.14
+---------------------------------------------------------------------------------------------------------------------
