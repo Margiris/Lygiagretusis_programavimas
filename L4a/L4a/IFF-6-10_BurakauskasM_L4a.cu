@@ -19,6 +19,7 @@ const int max_string_length = 47;
 const int group_count = 5;
 const int n = 30;
 
+// Structure of Car type data
 struct car
 {
 	char manufacturer[max_string_length];
@@ -27,11 +28,15 @@ struct car
 	double price;
 };
 
+// Main data array
 car Cars_data[group_count][n];
+// Main results array
 car Car_results[n];
-
+// Main data array's elements' length
 int Car_data_sizes[group_count];
 
+// Clears results file
+// Run on CPU
 void clear_results_file()
 {
 	ofstream file;
@@ -39,6 +44,8 @@ void clear_results_file()
 	file.close();
 }
 
+// Reads from file to Car structure
+// Run on CPU
 void read_data()
 {
 	ifstream data_file(data_filename);
@@ -60,6 +67,8 @@ void read_data()
 	data_file.close();
 }
 
+// Writes Car type data to file
+// Run on CPU
 void write_data() {
 	stringstream buffer;
 
@@ -85,6 +94,8 @@ void write_data() {
 	cout << buffer.str();
 }
 
+// Appends results data of type Car to file
+// Run on CPU
 void write_result() {
 	stringstream buffer;
 
@@ -110,6 +121,7 @@ void write_result() {
 	cout << buffer.str();
 }
 
+// strcpy function replacement that is called from GPU and run on GPU
 __device__ char * custom_strcpy(char *destination, const char *source) {
 	auto i = 0;
 
@@ -120,6 +132,7 @@ __device__ char * custom_strcpy(char *destination, const char *source) {
 	return destination;
 }
 
+// strcat function replacement that is called from GPU and run on GPU
 __device__ char * custom_strcat(char *destination, const char *source) {
 	auto i = 0;
 
@@ -131,6 +144,8 @@ __device__ char * custom_strcat(char *destination, const char *source) {
 	return destination;
 }
 
+// Add Car type objects' elements to result object by concatenating strings and summing numeric values
+// Run on GPU, called from CPU
 __global__ void add(car** Pa, car* result) {
 	const int idx = threadIdx.x;
 	result[idx].price = 0;
@@ -152,34 +167,47 @@ int main()
 {
 	clear_results_file();
 
+	// Read data from and write it to file
 	read_data();
 	write_data();
 
 	int data_array_size = n * sizeof(car);
 
+	// Create pointer of type Car array on GPU memory
 	car **CUDA_car;
+	// Allocate memory on GPU for created pointer
 	cudaMalloc((void**)&CUDA_car, group_count * sizeof(car*));
 
 	for (auto group_index = 0; group_index < group_count; group_index++)
 	{
+		// Create pointer of type Car on GPU memory
 		car * CUDA_car_child;
 
+		// Allocate memory on GPU for created object
 		cudaMalloc((void**)&CUDA_car_child, data_array_size);
 
+		// Copy data of data array i-th element from CPU to GPU memory
 		cudaMemcpy(CUDA_car_child, Cars_data[group_index], data_array_size, cudaMemcpyHostToDevice);
+		// Copy pointer of data array i-th element from CPU to GPU memory (to Car array i-th place)
 		cudaMemcpy(&CUDA_car[group_index], &CUDA_car_child, sizeof(car*), cudaMemcpyHostToDevice);
 	}
 
+	// Create pointer of type Car array on GPU memory for storing results
 	car *CUDA_result;
 
+	// Allocate memory on GPU for created pointer
 	cudaMalloc((void**)&CUDA_result, data_array_size);
 
+	// Run add function on GPU
 	add <<<1, n>>> (CUDA_car, CUDA_result);
 
+	// Wait for all CUDA threads to finish
 	cudaDeviceSynchronize();
 
+	// Copy data of results array back from GPU to CPU memory
 	cudaMemcpy(Car_results, CUDA_result, data_array_size, cudaMemcpyDeviceToHost);
 
+	// Free up no longer used memory on GPU
 	for (auto i = 0; i < group_count; i++)
 	{
 		cudaFree(&CUDA_car[i]);
@@ -188,8 +216,10 @@ int main()
 	cudaFree(CUDA_car);
 	cudaFree(CUDA_result);
 
+	// Write results to file
 	write_result();
 
+	// Pause console window
 	system("pause");
 	return 0;
 }

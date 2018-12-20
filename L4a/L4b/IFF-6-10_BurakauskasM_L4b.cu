@@ -22,15 +22,20 @@ const int max_string_length = 47;
 const int group_count = 5;
 const int n = 30;
 
-__host__ __device__  struct car
+// Structure of Car type data
+struct car
 {
 	char manufacturer[max_string_length];
 	char model[max_string_length];
 	int year;
 	double price;
 
+	// Default constructor
+	// Called from either CPU or GPU
 	__host__ __device__ car() {};
 
+	// Constructor that assigns passed values to properties
+	// Called from either CPU or GPU
 	__host__ __device__ car(char manufacturerNew[], char modelNew[], int yearNew, double priceNew) {
 		strcpy(manufacturer, manufacturerNew);
 		strcpy(model, modelNew);
@@ -39,11 +44,15 @@ __host__ __device__  struct car
 	}
 };
 
+// Main data array
 car Cars_data[group_count][n];
+// Main results array
 car Car_results[n];
-
+// Main data array's elements' length
 int Car_data_sizes[group_count];
 
+// Clears results file
+// Run on CPU
 void clear_results_file()
 {
 	ofstream file;
@@ -51,6 +60,8 @@ void clear_results_file()
 	file.close();
 }
 
+// Reads from file to Car structure
+// Run on CPU
 void read_data()
 {
 	ifstream data_file(data_filename);
@@ -72,6 +83,8 @@ void read_data()
 	data_file.close();
 }
 
+// Writes Car type data to file
+// Run on CPU
 void write_data() {
 	stringstream buffer;
 
@@ -97,6 +110,8 @@ void write_data() {
 	cout << buffer.str();
 }
 
+// Appends results data of type Car to file
+// Run on CPU
 void write_result() {
 	stringstream buffer;
 
@@ -122,6 +137,7 @@ void write_result() {
 	cout << buffer.str();
 }
 
+// strcpy function replacement that is called from GPU and run on GPU
 __device__ char * custom_strcpy(char *destination, const char *source) {
 	auto i = 0;
 
@@ -132,6 +148,7 @@ __device__ char * custom_strcpy(char *destination, const char *source) {
 	return destination;
 }
 
+// strcat function replacement that is called from GPU and run on GPU
 __device__ char * custom_strcat(char *destination, const char *source) {
 	auto i = 0;
 
@@ -144,6 +161,8 @@ __device__ char * custom_strcat(char *destination, const char *source) {
 }
 
 struct functor {
+	// Add Car type objects' elements to accumulator object by concatenating strings and summing numeric values
+	// Called and run on GPU
 	__device__ car operator()(car accumulator, car item) {
 		const auto manufacturer = accumulator.manufacturer;
 		custom_strcat(manufacturer, item.manufacturer);
@@ -162,12 +181,16 @@ int main()
 {
 	clear_results_file();
 
+	// Read data from and write it to file
 	read_data();
 	write_data();
 
+	// Create vector on CPU memory to store data
 	host_vector<car> host_car[n];
+	// Create vector on GPU memory to store data
 	device_vector<car> device_car[n];
 
+	// Add data from main data array to host vector and copy it to GPU memory by assigning it's value to device vector
 	for (auto i = 0; i < n; i++)
 	{
 		for (auto o = 0; o < group_count; o++)
@@ -178,13 +201,17 @@ int main()
 		device_car[i] = host_car[i];
 	}
 
+	// Call reduce function for each vector in device vector array.
+	// Reduce function uses operatot() override in functor struct
 	for (auto i = 0; i < n; i++)
 	{
 		Car_results[i] = reduce(device_car[i].begin(), device_car[i].end(), car("", "", 0, 0), functor());
 	}
 
+	// Write results to file
 	write_result();
 
+	// Pause console window
 	std::system("pause");
 	return 0;
 }
